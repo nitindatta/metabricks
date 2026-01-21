@@ -1,0 +1,57 @@
+{
+  "pipeline_name": "incremental_partition_replace",
+  "description": "Incremental load with partition replacement. Replaces specific partitions only.",
+  {
+    "_comment": "Incremental load with logical overwrite scoping (replaceWhere) + physical partitioning. overwrite_scope drives replaceWhere; partition_by controls layout.",
+    "pipeline_name": "incremental_partition_replace",
+    "environment": "dev",
+    "source_system": "external_api",
+
+    "source": {
+      "system_type": "api",
+      "extraction_mode": "batch",
+      "format": "json",
+      "connection": {
+        "system_type": "api",
+        "base_url": "https://api.example.com",
+        "auth": {"kind": "none"}
+      },
+      "endpoint": "/v1/warehouse/facts",
+      "method": "GET"
+    },
+
+    "sink": {
+      "system_type": "databricks",
+      "location_type": "catalog_table",
+      "mode": "batch",
+      "format": "delta",
+      "connection": {
+        "system_type": "databricks",
+        "catalog": "main",
+        "schema_name": "warehouse"
+      },
+      "object_name": "facts",
+      "write_mode": "overwrite",
+
+      "overwrite_scope": [
+        {
+          "year": "{{extract_ts_yyyy}}",
+          "month": "{{extract_ts_MM}}",
+          "day": "{{extract_ts_dd}}"
+        }
+      ],
+
+      "partition_by": ["year", "month", "day"],
+
+      "delta_write_options": {
+        "mode": "overwrite",
+        "merge_schema": false
+      }
+    },
+
+    "notes": [
+      "overwrite_scope is a list of key-value maps; it is used to build a Delta replaceWhere predicate",
+      "partition_by is Spark partitionBy(...) and controls file layout; it is independent from overwrite_scope",
+      "Templates like {{extract_ts_yyyy}} are resolved by the orchestrator at runtime"
+    ]
+  }

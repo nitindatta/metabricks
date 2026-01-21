@@ -1,0 +1,40 @@
+{
+  "pipeline_name": "example_with_audit_metadata",
+  "environment": "prod",
+  "source_system": "api_system",
+  "source_dataset_id": "dataset_456",
+  
+  "execution_context": {
+    "attach_audit_meta": true,
+    "record_hash_keys": ["id", "timestamp"]
+  },
+  
+  "source": {
+    "system_type": "api",
+    "extraction_mode": "batch",
+    "format": "json",
+    "connection": {
+      "system_type": "api",
+      "base_url": "https://api.example.com",
+      "timeout_seconds": 30.0,
+      "headers": {"Accept": "application/json"},
+      "auth": {"kind": "none"}
+    },
+    "endpoint": "/v1/datasets/456",
+    "method": "GET"
+  },
+  
+  "sink": {
+    "system_type": "databricks",
+    "mode": "batch",
+    "format": "delta",
+    "location_type": "catalog_table",
+    "object_name": "my_table",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "my_catalog",
+      "schema_name": "my_schema"
+    },
+    "write_mode": "append"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "pipeline_name": "databricks_uc_to_uc",
+  "environment": "dev",
+  "execution_context": {
+    "attach_audit_meta": false
+  },
+  "source": {
+    "system_type": "databricks",
+    "extraction_mode": "batch",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "source_schema"
+    },
+    "source_query": "SELECT * FROM main.source_schema.source_table WHERE ds = :logical_date",
+    "query_args": {"logical_date": "2025-01-01"}
+  },
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "batch",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "dest_schema"
+    },
+    "object_name": "dest_table",
+    "write_mode": "overwrite",
+    "format_options": {}
+  }
+}

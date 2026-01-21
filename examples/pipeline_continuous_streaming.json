@@ -1,0 +1,38 @@
+{
+  "_comment": "Continuous trigger is configured via runtime DeltaStreamWriteOptions (trigger_mode='continuous'). The pipeline JSON uses default trigger unless runtime options are supplied.",
+  "pipeline_name": "continuous_streaming",
+  "environment": "dev",
+  "source_system": "kafka",
+
+  "source": {
+    "system_type": "kafka",
+    "extraction_mode": "streaming",
+    "format": "json",
+    "connection": {
+      "system_type": "kafka",
+      "bootstrap_servers": "kafka.example.com:9092"
+    },
+    "topic": "low_latency_events",
+    "starting_offsets": "latest"
+  },
+
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "streaming",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "real_time"
+    },
+    "object_name": "continuous",
+    "write_mode": "append",
+    "checkpoint_path": "/mnt/checkpoints/continuous"
+  },
+
+  "notes": [
+    "If you need trigger_mode=continuous, supply DeltaStreamWriteOptions at runtime",
+    "Recommended defaults for production: availableNow or processingTime"
+  ]
+}

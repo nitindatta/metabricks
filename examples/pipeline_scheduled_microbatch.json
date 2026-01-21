@@ -1,0 +1,38 @@
+{
+  "_comment": "Scheduled micro-batching is controlled via runtime DeltaStreamWriteOptions (trigger_mode='processingTime'). The pipeline JSON uses default trigger unless runtime options are supplied.",
+  "pipeline_name": "scheduled_micro_batch",
+  "environment": "dev",
+  "source_system": "kafka",
+
+  "source": {
+    "system_type": "kafka",
+    "extraction_mode": "streaming",
+    "format": "json",
+    "connection": {
+      "system_type": "kafka",
+      "bootstrap_servers": "kafka.example.com:9092"
+    },
+    "topic": "metrics",
+    "starting_offsets": "latest"
+  },
+
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "streaming",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "analytics"
+    },
+    "object_name": "metrics",
+    "write_mode": "append",
+    "checkpoint_path": "/mnt/checkpoints/scheduled_metrics"
+  },
+
+  "notes": [
+    "To run every 5 minutes, configure DeltaStreamWriteOptions(trigger_mode='processingTime', trigger_interval='5 minutes') at runtime",
+    "checkpoint_path is required for streaming sinks"
+  ]
+}

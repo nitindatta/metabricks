@@ -1,0 +1,29 @@
+{
+  "pipeline_name": "api_to_databricks_uc_volume_json",
+  "environment": "dev",
+  "source_system": "some_api",
+  "source_dataset_id": "dataset_123",
+  "source": {
+    "system_type": "api",
+    "extraction_mode": "batch",
+    "format": "json",
+    "connection": {
+      "system_type": "api",
+      "base_url": "https://example.test",
+      "timeout_seconds": 30.0,
+      "headers": {"Accept": "application/json"},
+      "auth": {"kind": "none"}
+    },
+    "endpoint": "/v1/data",
+    "method": "GET"
+  },
+  "sink": {
+    "system_type": "filesystem",
+    "mode": "batch",
+    "format": "json",
+    "root": "/tmp/metabricks_test_volume_api",
+    "folder_path": "landing/api/dataset_123",
+    "object_name": "data.json",
+    "compression": "none"
+  }
+}

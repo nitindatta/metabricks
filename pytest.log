@@ -1,0 +1,37 @@
+INFO     metabricks.orchestrator:orchestrator.py:185 Pipeline 'p' started with run_id=inv-1
+INFO     metabricks.orchestrator:orchestrator.py:188 Initializing source connector: system_type=api, mode=batch
+INFO     metabricks.orchestrator:orchestrator.py:196 Source connector initialized: ApiBatchConnector
+INFO     metabricks.orchestrator:orchestrator.py:199 Starting data extraction from source
+INFO     metabricks.orchestrator:orchestrator.py:206 Data extraction completed: payload_type=json
+INFO     metabricks.orchestrator:orchestrator.py:255 No sink configured, skipping write operation
+INFO     metabricks.orchestrator:orchestrator.py:257 Pipeline 'p' completed successfully
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=delta
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=delta
+INFO     DatabricksSink:base_sink.py:33 Starting write operation: payload_type=json, format=delta
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=delta
+INFO     DatabricksSink:base_sink.py:33 Starting write operation: payload_type=dataframe, format=delta
+INFO     DatabricksSink:base_sink.py:33 Target type: catalog_table, table=default_catalog.default_schema.test_table
+INFO     DatabricksSink:base_sink.py:33 Using DeltaWriterStrategy for catalog_table write with mode=overwrite
+INFO     DeltaWriterStrategy:delta_writer.py:67 Writing Delta: target=default_catalog.default_schema.test_table, mode=overwrite
+INFO     DeltaWriterStrategy:delta_writer.py:91 Delta table write completed: record_count=200, table=default_catalog.default_schema.test_table
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=delta
+INFO     DatabricksSink:base_sink.py:33 Starting write operation: payload_type=dataframe, format=delta
+INFO     DatabricksSink:base_sink.py:33 Target type: catalog_table, table=default_catalog.default_schema.test_table
+INFO     DatabricksSink:base_sink.py:33 Using DeltaWriterStrategy for catalog_table write with mode=overwrite
+INFO     DeltaWriterStrategy:delta_writer.py:67 Writing Delta: target=default_catalog.default_schema.test_table, mode=overwrite
+INFO     DeltaWriterStrategy:delta_writer.py:82 Using replaceWhere optimization: (month='01' AND year='2025') OR (month='02' AND year='2025')...
+INFO     DeltaWriterStrategy:delta_writer.py:91 Delta table write completed: record_count=10, table=default_catalog.default_schema.test_table
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=json
+INFO     DatabricksSink:base_sink.py:33 Starting write operation: payload_type=json, format=json
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=parquet
+INFO     DatabricksSink:base_sink.py:33 Starting write operation: payload_type=dataframe, format=parquet
+INFO     DatabricksSink:base_sink.py:33 Target type: volume, path=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u0/raw, object_name=dataset
+INFO     DatabricksSink:base_sink.py:33 Using SparkFileWriterStrategy for volume write: target_path=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u0/raw/dataset, mode=overwrite
+INFO     SparkFileWriterStrategy:spark_file_writer.py:36 Writing parquet file: path=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u0/raw/dataset, mode=overwrite, partition_by=[]
+INFO     SparkFileWriterStrategy:spark_file_writer.py:47 Parquet write completed: record_count=5, location=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u0/raw/dataset
+INFO     DatabricksSink:base_sink.py:33 Initializing DatabricksSink: mode=batch, format=csv
+INFO     DatabricksSink:base_sink.py:33 Starting write operation: payload_type=dataframe, format=csv
+INFO     DatabricksSink:base_sink.py:33 Target type: volume, path=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u1/raw, object_name=dataset
+INFO     DatabricksSink:base_sink.py:33 Using SparkFileWriterStrategy for volume write: target_path=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u1/raw/dataset, mode=overwrite
+INFO     SparkFileWriterStrategy:spark_file_writer.py:36 Writing csv file: path=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u1/raw/dataset, mode=overwrite, partition_by=[]
+INFO     SparkFileWriterStrategy:spark_file_writer.py:47 Csv write completed: record_count=5, location=/tmp/pytest-of-droid/pytest-2/test_volume_dataframe_writes_u1/raw/dataset

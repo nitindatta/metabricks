@@ -1,0 +1,42 @@
+{
+  "_comment": "Append pattern with schema evolution enabled (merge_schema=true). This is commonly used for CDC-like feeds.",
+  "pipeline_name": "cdc_append_with_schema_evolution",
+  "environment": "dev",
+  "source_system": "external_api",
+
+  "source": {
+    "system_type": "api",
+    "extraction_mode": "batch",
+    "format": "json",
+    "connection": {
+      "system_type": "api",
+      "base_url": "https://api.example.com",
+      "auth": {"kind": "none"}
+    },
+    "endpoint": "/v1/events/changes",
+    "method": "GET"
+  },
+
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "batch",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "silver"
+    },
+    "object_name": "fact_events",
+    "write_mode": "append",
+    "delta_write_options": {
+      "mode": "append",
+      "merge_schema": true
+    }
+  },
+
+  "notes": [
+    "Append-only with schema evolution",
+    "Use for CDC-style feeds and evolving payloads"
+  ]
+}

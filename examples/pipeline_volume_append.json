@@ -1,0 +1,43 @@
+{
+  "_comment": "Append to a Delta table stored in a Unity Catalog Volume. Demonstrates physical partitioning via partition_by.",
+  "pipeline_name": "volume_append_example",
+  "environment": "dev",
+  "source_system": "external_api",
+
+  "source": {
+    "system_type": "api",
+    "extraction_mode": "batch",
+    "format": "json",
+    "connection": {
+      "system_type": "api",
+      "base_url": "https://api.example.com",
+      "auth": {"kind": "none"}
+    },
+    "endpoint": "/v1/events",
+    "method": "GET"
+  },
+
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "volume",
+    "mode": "batch",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks"
+    },
+    "volume_path": "/Volumes/main/archives/events",
+    "folder_path": "delta_tables",
+    "object_name": "events",
+    "write_mode": "append",
+    "partition_by": ["event_date"],
+    "delta_write_options": {
+      "mode": "append",
+      "merge_schema": true
+    }
+  },
+
+  "notes": [
+    "partition_by controls physical layout (Spark partitionBy)",
+    "merge_schema=true allows new columns over time"
+  ]
+}

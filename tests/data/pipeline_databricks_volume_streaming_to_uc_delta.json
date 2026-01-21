@@ -1,0 +1,37 @@
+{
+  "pipeline_name": "databricks_volume_streaming_to_uc_delta",
+  "environment": "dev",
+  "execution_context": {
+    "attach_audit_meta": false
+  },
+  "source": {
+    "system_type": "databricks",
+    "extraction_mode": "streaming",
+    "format": "json",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "raw"
+    },
+    "source_path": "/Volumes/main/raw/source_volume/landing/events",
+    "schema_location": "/Volumes/main/raw/source_volume/_schemas/events",
+    "autoloader_options": {
+      "cloudFiles.inferColumnTypes": "true"
+    }
+  },
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "streaming",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "bronze"
+    },
+    "object_name": "events",
+    "write_mode": "append",
+    "checkpoint_path": "/Volumes/main/raw/source_volume/_checkpoints/events_to_bronze",
+    "format_options": {}
+  }
+}
