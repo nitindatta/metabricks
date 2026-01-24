@@ -2,10 +2,19 @@ from __future__ import annotations
 
 from typing import Optional
 
-from metabricks.connectors.databricks.types import DatabricksAutoloaderSource, DatabricksConnection, DatabricksQuery
-from metabricks.connectors.types import KafkaConnection
+from metabricks.connectors.databricks.types import (
+    DatabricksAutoloaderSource,
+    DatabricksBatchPathSource,
+    DatabricksBatchQuerySource,
+    DatabricksBatchSource,
+    DatabricksConnection,
+)
 from metabricks.core.secrets_provider import SecretsProvider
-from metabricks.models.source_config import DatabricksSourceConfig
+from metabricks.models.source_config import (
+    DatabricksBatchPathConfig,
+    DatabricksBatchQueryConfig,
+    DatabricksSourceConfig,
+)
 from metabricks.wiring.source_registry import BuiltConnectorArgs, register_source_wiring
 
 
@@ -16,20 +25,29 @@ def build_databricks_connection(cfg: DatabricksSourceConfig) -> DatabricksConnec
     )
 
 
-def build_databricks_query(cfg: DatabricksSourceConfig) -> DatabricksQuery:
-    assert cfg.source_query is not None
-    assert cfg.query_args is not None
-    return DatabricksQuery(source_query=cfg.source_query, query_args=cfg.query_args)
+def build_databricks_batch_source(cfg: DatabricksSourceConfig) -> DatabricksBatchSource:
+    if cfg.batch is None:
+        raise ValueError("batch configuration is required for Databricks batch sources")
+    if isinstance(cfg.batch, DatabricksBatchQueryConfig):
+        return DatabricksBatchQuerySource(kind="query", query=cfg.batch.query, args=dict(cfg.batch.args))
+    if isinstance(cfg.batch, DatabricksBatchPathConfig):
+        return DatabricksBatchPathSource(
+            kind="path",
+            path=cfg.batch.path,
+            format=cfg.batch.format,
+            options=dict(cfg.batch.options or {}),
+        )
+    raise TypeError(f"Unsupported Databricks batch config: {type(cfg.batch)!r}")
 
 
 def build_databricks_autoloader_source(cfg: DatabricksSourceConfig) -> DatabricksAutoloaderSource:
-    assert cfg.source_path is not None
-    assert cfg.schema_location is not None
+    if cfg.streaming is None:
+        raise ValueError("streaming configuration is required for Databricks streaming sources")
     return DatabricksAutoloaderSource(
-        path=cfg.source_path,
-        schema_location=cfg.schema_location,
-        format="json",
-        autoloader_options=dict(cfg.autoloader_options or {}),
+        path=cfg.streaming.path,
+        schema_location=cfg.streaming.schema_location,
+        format=cfg.streaming.format,
+        autoloader_options=dict(cfg.streaming.options or {}),
     )
 
 
@@ -43,8 +61,8 @@ def build_databricks_batch_connector_args(
     _ = secrets_provider
 
     connection = build_databricks_connection(source)
-    query = build_databricks_query(source)
-    return BuiltConnectorArgs(args=(connection, query), kwargs={})
+    batch_source = build_databricks_batch_source(source)
+    return BuiltConnectorArgs(args=(connection, batch_source), kwargs={})
 
 
 @register_source_wiring(system_type="databricks", extraction_mode="streaming")

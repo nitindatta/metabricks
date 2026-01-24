@@ -18,6 +18,12 @@ from metabricks.systems.databricks.types import (
 from metabricks.sinks.registry import register_sink
 from metabricks.sinks.strategies.delta_writer import DeltaWriterStrategy
 from metabricks.sinks.strategies.spark_file_writer import SparkFileWriterStrategy
+from metabricks.sinks.utils.column_normalizer import (
+    normalize_dataframe_columns,
+    resolve_column_list,
+    resolve_overwrite_scope,
+    store_column_mapping,
+)
 
 
 
@@ -73,12 +79,40 @@ class DatabricksSink(BaseSink):
             )
 
         fmt = cfg.format.lower()
+        partition_by = cfg.partition_by or []
+        overwrite_scope = cfg.overwrite_scope
+        replace_where = cfg.replace_where
 
         # Optionally attach enterprise audit metadata struct at sink-time.
         # Guarded by context.attach_audit_meta so existing pipelines remain unchanged.
+        if cfg.normalize_columns:
+            df, mapping, changed = normalize_dataframe_columns(envelope.data, cfg.normalization_strategy)
+            envelope.data = df
+            if envelope.context and envelope.context.attach_audit_meta:
+                for name in ("_ingest_ts", "_run_id", "_logical_date", "_meta"):
+                    mapping.setdefault(name, name)
+            store_column_mapping(envelope.context, mapping, cfg.normalization_mapping_key)
+            if envelope.context and envelope.context.record_hash_keys:
+                envelope.context.record_hash_keys = resolve_column_list(
+                    envelope.context.record_hash_keys,
+                    mapping,
+                    "record_hash_keys",
+                )
+            if partition_by:
+                partition_by = resolve_column_list(partition_by, mapping, "partition_by")
+            if overwrite_scope:
+                overwrite_scope = resolve_overwrite_scope(overwrite_scope, mapping)
+            if replace_where and changed:
+                raise ValueError(
+                    "replace_where cannot be used when normalize_columns changes column names"
+                )
+        else:
+            if envelope.context:
+                identity_mapping = {col: col for col in envelope.data.columns}
+                store_column_mapping(envelope.context, identity_mapping, cfg.normalization_mapping_key)
+
         if envelope.context and envelope.context.attach_audit_meta:
-            df = envelope.data
-            envelope.data = self._attach_meta_struct(df, envelope.context)
+            envelope.data = self._attach_meta_struct(envelope.data, envelope.context)
 
         if isinstance(cfg.target, DatabricksCatalogTableTarget):
             self.log_info(f"Target type: catalog_table, table={self._table_name()}")
@@ -94,11 +128,12 @@ class DatabricksSink(BaseSink):
                 {
                     "spark": spark,
                     "table_name": self._table_name(),
-                    "overwrite_scope": cfg.overwrite_scope or None,
-                    "replace_where": cfg.replace_where,
-                    "partition_by": cfg.partition_by or [],
+                    "overwrite_scope": overwrite_scope or None,
+                    "replace_where": replace_where,
+                    "partition_by": partition_by,
                     "write_options": cfg.delta_write_options,
                     "options": cfg.format_options,
+                    "table_properties": cfg.table_properties,
                 },
             )
 
@@ -121,9 +156,9 @@ class DatabricksSink(BaseSink):
             cfg_dict: Dict[str, Any] = {
                 "spark": spark,
                 "path": target_path,
-                "overwrite_scope": cfg.overwrite_scope or None,
-                "replace_where": cfg.replace_where,
-                "partition_by": cfg.partition_by or [],
+                "overwrite_scope": overwrite_scope or None,
+                "replace_where": replace_where,
+                "partition_by": partition_by,
                 "write_options": cfg.delta_write_options,
                 "options": cfg.format_options,
             }
@@ -143,9 +178,9 @@ class DatabricksSink(BaseSink):
             cfg_dict: Dict[str, Any] = {
                 "spark": spark,
                 "path": cfg.target.path,
-                "overwrite_scope": cfg.overwrite_scope or None,
-                "replace_where": cfg.replace_where,
-                "partition_by": cfg.partition_by or [],
+                "overwrite_scope": overwrite_scope or None,
+                "replace_where": replace_where,
+                "partition_by": partition_by,
                 "write_options": cfg.delta_write_options,
                 "options": cfg.format_options,
             }
@@ -159,7 +194,8 @@ class DatabricksSink(BaseSink):
         Top-level columns (for query performance):
         - _ingest_ts: Timestamp for time-based filtering, partitioning, watermarks
         - run_id: Run identifier for debugging/tracing
-        
+        - _logical_date: Logical run date (scheduler boundary) for idempotent overwrites
+
         Nested _meta struct (rarely queried audit fields):
         - batch_id, pipeline_name, pipeline_version, is_replay
         - write_principal, record_hash
@@ -187,9 +223,12 @@ class DatabricksSink(BaseSink):
             # Explicitly cast NULL to STRING type to avoid void type
             record_hash = F.coalesce(F.lit(None), F.lit(""))
 
+        logical_date = context.logical_date
+
         # Add top-level columns for performance (used in WHERE clauses, partitioning)
         df = df.withColumn("_ingest_ts", F.current_timestamp().cast(TimestampType()))
         df = df.withColumn("_run_id", F.lit(run_id).cast(StringType()))
+        df = df.withColumn("_logical_date", F.lit(logical_date).cast(StringType()))
 
         # Build nested _meta struct with remaining audit fields
         meta_struct = F.struct(

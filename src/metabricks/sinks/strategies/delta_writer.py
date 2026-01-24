@@ -31,6 +31,43 @@ def _build_replace_where_from_scope(overwrite_scope: list[dict[str, str]]) -> st
     return " OR ".join(predicates)
 
 
+def _escape_sql(value: str) -> str:
+    return value.replace("'", "''")
+
+
+def _quote_ident(identifier: str) -> str:
+    return f"`{identifier.replace('`', '``')}`"
+
+
+def _schema_to_ddl(schema) -> str:
+    columns = []
+    for field in schema.fields:
+        col_type = field.dataType.simpleString()
+        columns.append(f"{_quote_ident(field.name)} {col_type}")
+    return ", ".join(columns)
+
+
+def _build_create_table_sql(
+    *,
+    table_name: str,
+    schema,
+    partition_by: List[str],
+    table_properties: Dict[str, str],
+) -> str:
+    ddl_cols = _schema_to_ddl(schema)
+    partition_sql = ""
+    if partition_by:
+        partition_cols = ", ".join(_quote_ident(col) for col in partition_by)
+        partition_sql = f" PARTITIONED BY ({partition_cols})"
+    props_sql = ""
+    if table_properties:
+        props = ", ".join(
+            [f"'{_escape_sql(k)}'='{_escape_sql(str(v))}'" for k, v in table_properties.items()]
+        )
+        props_sql = f" TBLPROPERTIES ({props})"
+    return f"CREATE TABLE IF NOT EXISTS {table_name} ({ddl_cols}) USING DELTA {partition_sql}{props_sql}"
+
+
 class DeltaWriterStrategy(WriterStrategy):
     """Write a batch dataframe as Delta.
 
@@ -56,6 +93,7 @@ class DeltaWriterStrategy(WriterStrategy):
         partition_by: List[str] = config.get("partition_by") or []
         spark = config.get("spark")
         write_options: DeltaBatchWriteOptions = config.get("write_options")
+        table_properties: Dict[str, str] = config.get("table_properties") or {}
         
         # Extract from typed model
         mode = write_options.mode
@@ -86,6 +124,24 @@ class DeltaWriterStrategy(WriterStrategy):
             raise ValueError("Provide either table_name or path, not both")
 
         if table_name:
+            if spark is not None and table_properties:
+                try:
+                    exists = bool(spark.catalog.tableExists(table_name))
+                except Exception:
+                    exists = False
+                if not exists:
+                    create_sql = _build_create_table_sql(
+                        table_name=table_name,
+                        schema=df.schema,
+                        partition_by=partition_by,
+                        table_properties=table_properties,
+                    )
+                    self.log.info(
+                        "Creating Delta table: table=%s, properties=%s",
+                        table_name,
+                        table_properties,
+                    )
+                    spark.sql(create_sql)
             writer.saveAsTable(table_name)
             record_count = _try_delta_operation_metrics(spark, table_name) or df.count()
             self.log.info(f"Delta table write completed: record_count={record_count}, table={table_name}")

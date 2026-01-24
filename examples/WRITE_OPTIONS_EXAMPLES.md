@@ -1,6 +1,6 @@
 # Write Options Example Configurations
 
-This directory contains example JSON configurations demonstrating how to use the new write options system in the MetaBricks metadata-driven ingestion framework.
+This directory contains example JSON configurations demonstrating how to use the new write options system in the OECD metadata-driven ingestion framework.
 
 ## Quick Start
 

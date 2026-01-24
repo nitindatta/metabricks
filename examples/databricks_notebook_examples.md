@@ -22,10 +22,10 @@ config = {
     "name": "rest_api_to_uc",
     "source": {
         "type": "rest",
-        "endpoint": "https://api.example.com/v1/metadata",
+        "endpoint": "https://api.oecd.org/v1/metadata",
         "auth": {
             "type": "bearer",
-            "token_path": "/Volumes/main/shared/secrets/api_token.txt"
+            "token_path": "/Volumes/main/shared/secrets/oecd_token.txt"
         },
         "pagination": {
             "type": "offset",
@@ -36,7 +36,7 @@ config = {
     "sink": {
         "type": "databricks_uc",
         "catalog": "main",
-        "schema": "metadata_data",
+        "schema": "oecd_data",
         "table": "metadata_raw",
         "write_mode": "overwrite"
     },
@@ -88,8 +88,8 @@ config = {
     "source": {
         "type": "kafka",
         "brokers": ["kafka-broker-1:9092", "kafka-broker-2:9092"],
-        "topic": "metadata.events",
-        "group_id": "metadata-ingestion-group",
+        "topic": "oecd.metadata.events",
+        "group_id": "oecd-ingestion-group",
         "security_protocol": "SASL_SSL",
         "sasl_mechanism": "PLAIN",
         "sasl_username": "{{secrets/kafka_user}}",
@@ -97,7 +97,7 @@ config = {
     },
     "sink": {
         "type": "databricks_volume",
-        "volume_path": "/Volumes/main/shared/metadata_streaming",
+        "volume_path": "/Volumes/main/shared/oecd_streaming",
         "format": "delta",
         "mode": "append",
         "checkpoint_path": "/Volumes/main/shared/checkpoints/kafka_ingestion"
@@ -125,7 +125,7 @@ config = {
     "source": {
         "type": "jdbc",
         "driver": "org.postgresql.Driver",
-        "url": "jdbc:postgresql://prod-db.internal:5432/metadata_source",
+        "url": "jdbc:postgresql://prod-db.internal:5432/oecd_source",
         "user": "{{secrets/db_user}}",
         "password": "{{secrets/db_password}}",
         "dbtable": "(SELECT * FROM metadata WHERE updated_at > CURRENT_DATE - 7) t",
@@ -137,7 +137,7 @@ config = {
     "sink": {
         "type": "databricks_uc",
         "catalog": "main",
-        "schema": "metadata_staging",
+        "schema": "oecd_staging",
         "table": "metadata_staged",
         "mode": "merge",
         "merge_key": "id"
@@ -205,7 +205,7 @@ config = {
     "name": "ftp_to_adls_to_uc",
     "source": {
         "type": "ftp",
-        "host": "ftp.example.com",
+        "host": "ftp.oecd.org",
         "port": 21,
         "username": "{{secrets/ftp_user}}",
         "password": "{{secrets/ftp_password}}",
@@ -235,7 +235,7 @@ config = {
     "sink": {
         "type": "databricks_uc",
         "catalog": "main",
-        "schema": "metadata_data",
+        "schema": "oecd_data",
         "table": "metadata_processed",
         "mode": "append"
     }
@@ -274,19 +274,19 @@ import json
 from metabricks import MetadataOrchestrator
 
 def run_daily_ingest():
-    """Daily metadata ingestion job."""
+    """Daily OECD metadata ingestion job."""
     
     config = {
-        "name": "daily_metadata_ingest",
+        "name": "daily_oecd_ingest",
         "source": {
             "type": "rest",
-            "endpoint": "https://api.example.com/v1/metadata",
+            "endpoint": "https://api.oecd.org/v1/metadata",
             "auth": {"type": "bearer", "token": "{{secrets/api_key}}"}
         },
         "sink": {
             "type": "databricks_uc",
             "catalog": "main",
-            "schema": "metadata_data",
+            "schema": "oecd_data",
             "table": "metadata"
         }
     }
@@ -313,7 +313,7 @@ Then in Databricks Job config:
 
 ```json
 {
-  "name": "Daily Metadata Ingest",
+  "name": "Daily OECD Metadata Ingest",
   "schedule": {
     "quartz_cron_expression": "0 2 * * ? *",
     "timezone_id": "UTC"
@@ -371,7 +371,7 @@ except Exception as e:
 # Databricks widgets for parameterization
 dbutils.widgets.text("config_path", "/Volumes/main/shared/configs/default.json")
 dbutils.widgets.text("catalog", "main")
-dbutils.widgets.text("schema", "metadata_data")
+dbutils.widgets.text("schema", "oecd_data")
 
 config_path = dbutils.widgets.get("config_path")
 catalog = dbutils.widgets.get("catalog")

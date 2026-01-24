@@ -245,8 +245,11 @@ class TestMetadataOrchestratorRun:
                 "system_type": "databricks",
                 "extraction_mode": "batch",
                 "connection": {"system_type": "databricks"},
-                "source_query": "SELECT * FROM t WHERE ds = :logical_date",
-                "query_args": {"logical_date": "{{snapshot_date}}"},
+                "batch": {
+                    "kind": "query",
+                    "query": "SELECT * FROM t WHERE ds = :logical_date",
+                    "args": {"logical_date": "{{snapshot_date}}"},
+                },
             },
             "sink": None,
         }

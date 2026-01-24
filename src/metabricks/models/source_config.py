@@ -13,7 +13,9 @@ from metabricks.models.connection_config import (
 )
 
 ExtractionMode = Literal["batch", "streaming", "paginated", "incremental", "cdc"]
-SourceFormat = Literal["json", "delta"]
+SourceFormat = Literal["json", "delta", "csv", "parquet", "avro"]
+DatabricksBatchFormat = Literal["delta", "csv", "json", "parquet", "avro"]
+DatabricksStreamingFormat = Literal["json", "csv", "parquet", "delta"]
 
 
 class ApiPaginationConfig(BaseModel):
@@ -122,48 +124,78 @@ class KafkaSourceConfig(BaseModel):
         return self
 
 
+class DatabricksBatchQueryConfig(BaseModel):
+    kind: Literal["query"] = "query"
+    query: str
+    args: Dict[str, str] = Field(default_factory=dict)
+
+
+class DatabricksBatchPathConfig(BaseModel):
+    kind: Literal["path"] = "path"
+    path: str
+    format: DatabricksBatchFormat = "delta"
+    options: Dict[str, object] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _coerce_boolean_options(self) -> "DatabricksBatchPathConfig":
+        boolean_options = {
+            "header",
+            "inferSchema",
+            "multiline",
+            "allowComments",
+            "allowUnquotedFieldNames",
+            "allowSingleQuotes",
+            "allowNumericLeadingZeros",
+            "mergeSchema",
+            "ignoreExtension",
+        }
+        converted = {}
+        for key, value in self.options.items():
+            if key in boolean_options and isinstance(value, str):
+                converted[key] = value.lower() == "true"
+            else:
+                converted[key] = value
+        self.options = converted
+        return self
+
+
+DatabricksBatchSourceConfig = Annotated[
+    Union[DatabricksBatchQueryConfig, DatabricksBatchPathConfig],
+    Field(discriminator="kind"),
+]
+
+
+class DatabricksStreamingSourceConfig(BaseModel):
+    kind: Literal["autoloader"] = "autoloader"
+    path: str
+    schema_location: str
+    format: DatabricksStreamingFormat = "json"
+    options: Dict[str, object] = Field(default_factory=dict)
+
+
 class DatabricksSourceConfig(BaseModel):
     system_type: Literal["databricks"] = "databricks"
 
-    # Align with sink UX: `extraction_mode` + `format` are explicit dimensions.
     extraction_mode: Literal["batch", "streaming"] = "batch"
-    format: SourceFormat = "delta"
-
     connection: DatabricksConnectionConfig = Field(default_factory=DatabricksConnectionConfig)
 
-    # --- batch delta targets ---
-    source_query: Optional[str] = None
-    query_args: Optional[Dict[str, str]] = None
-
-    # --- streaming json targets (autoloader) ---
-    source_path: Optional[str] = None
-    schema_location: Optional[str] = None
-    autoloader_options: Dict[str, str] = Field(default_factory=dict)
+    batch: Optional[DatabricksBatchSourceConfig] = None
+    streaming: Optional[DatabricksStreamingSourceConfig] = None
 
     @model_validator(mode="after")
     def _validate_mode_and_format(self) -> "DatabricksSourceConfig":
         if self.extraction_mode == "batch":
-            if self.format != "delta":
-                raise ValueError("Databricks batch currently supports only format='delta'")
-            if not self.source_query:
-                raise ValueError("source_query is required when extraction_mode is 'batch'")
-            if not self.query_args:
-                raise ValueError("query_args is required when extraction_mode is 'batch'")
-            if self.source_path or self.schema_location or self.autoloader_options:
-                raise ValueError(
-                    "Do not set source_path/schema_location/autoloader_options when extraction_mode is 'batch'"
-                )
+            if self.batch is None:
+                raise ValueError("batch configuration is required when extraction_mode is 'batch'")
+            if self.streaming is not None:
+                raise ValueError("streaming configuration is not allowed when extraction_mode is 'batch'")
             return self
 
         if self.extraction_mode == "streaming":
-            if self.format != "json":
-                raise ValueError("Databricks streaming currently supports only format='json'")
-            if not self.source_path:
-                raise ValueError("source_path is required when extraction_mode is 'streaming'")
-            if not self.schema_location:
-                raise ValueError("schema_location is required when extraction_mode is 'streaming'")
-            if self.source_query or self.query_args:
-                raise ValueError("Do not set source_query/query_args when extraction_mode is 'streaming'")
+            if self.streaming is None:
+                raise ValueError("streaming configuration is required when extraction_mode is 'streaming'")
+            if self.batch is not None:
+                raise ValueError("batch configuration is not allowed when extraction_mode is 'streaming'")
             return self
 
         raise ValueError(f"Unsupported extraction_mode for databricks: {self.extraction_mode!r}")

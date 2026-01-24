@@ -209,7 +209,7 @@ def run_pipeline(
     # - Runtime parameters (from orchestrator: batch_id, version, replay flag)
     # - Design-time config (from JSON: attach_audit_meta, record_hash_keys)
     exec_cfg = cfg.execution_context
-    context = ExecutionContext(
+    context = ExecutionContext.from_runtime_vars(
         run_id=run_id,
         pipeline_name=cfg.pipeline_name,
         environment=cfg.environment,
@@ -221,7 +221,7 @@ def run_pipeline(
         is_replay=is_replay,
         batch_id=batch_id,
         pipeline_version=pipeline_version,
-        metadata=dict(runtime_vars or {}),
+        runtime_vars=runtime_vars,
     )
     env.context = context
 
@@ -256,5 +256,3 @@ def run_pipeline(
 
     log.info(f"Pipeline '{cfg.pipeline_name}' completed successfully")
     return env
-
-

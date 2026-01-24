@@ -46,6 +46,10 @@ def build_databricks_sink_runtime_config(cfg: DatabricksSinkConfig) -> Databrick
         partition_by=cfg.partition_by,
         checkpoint_path=cfg.checkpoint_path,
         format_options=dict(cfg.format_options or {}),
+        table_properties=dict(cfg.table_properties or {}),
+        normalize_columns=cfg.normalize_columns,
+        normalization_strategy=cfg.normalization_strategy,
+        normalization_mapping_key=cfg.normalization_mapping_key,
     )
 
 

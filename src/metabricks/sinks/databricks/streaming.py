@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
+from pyspark.sql.types import StringType
 
 from metabricks.core.base_sink import BaseSink
 from metabricks.core.contracts import DataEnvelope
 from metabricks.sinks.types import DatabricksSinkRuntimeConfig
 from metabricks.sinks.registry import register_sink
 from metabricks.sinks.strategies.delta_stream_writer import DeltaStreamWriterStrategy
+from metabricks.sinks.utils.column_normalizer import normalize_dataframe_columns, store_column_mapping
 from metabricks.systems.databricks.types import DatabricksCatalogTableTarget
 
 
@@ -39,6 +42,18 @@ class DatabricksStreamingSink(BaseSink):
 
         if cfg.format != "delta":
             raise ValueError("Streaming sink currently supports only format='delta'")
+
+        if cfg.normalize_columns:
+            df, mapping, _changed = normalize_dataframe_columns(env.data, cfg.normalization_strategy)
+            env.data = df
+            store_column_mapping(env.context, mapping, cfg.normalization_mapping_key)
+        else:
+            if env.context:
+                identity_mapping = {col: col for col in env.data.columns}
+                store_column_mapping(env.context, identity_mapping, cfg.normalization_mapping_key)
+
+        if env.context and env.context.attach_audit_meta:
+            env.data = env.data.withColumn("_logical_date", F.lit(env.context.logical_date).cast(StringType()))
 
         table_name = f"{cfg.connection.catalog}.{cfg.connection.schema_name}.{cfg.target.object_name}"
         run_id = env.context.run_id if env.context else "run"

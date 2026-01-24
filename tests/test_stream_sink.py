@@ -105,6 +105,37 @@ def test_stream_sink_query_name_includes_table_and_run_id(stream_sink: Databrick
     assert "inv-xyz" in qn
 
 
+def test_stream_sink_adds_logical_date_when_audit_enabled(stream_sink: DatabricksStreamingSink):
+    query = MagicMock()
+    query.exception.return_value = None
+    query.lastProgress = {"observedMetrics": {"numRecords": 1}}
+    df, _ws = _mock_streaming_df(query=query)
+    df.withColumn.return_value = df
+
+    context = ExecutionContext(
+        run_id="inv-ld-1",
+        pipeline_name="test",
+        attach_audit_meta=True,
+        logical_date="2025-01-01",
+    )
+    env = DataEnvelope(payload_type="stream", data=df, schema=None, context=context)
+
+    class _DummyCol:
+        def cast(self, _typ):
+            return self
+
+    with patch("metabricks.sinks.databricks.streaming.F.lit", return_value=_DummyCol()), patch(
+        "metabricks.sinks.strategies.delta_stream_writer.StreamingQueryProgress.model_validate"
+    ) as mock_validate:
+        mock_progress = MagicMock()
+        mock_progress.observed_metrics.get_record_count.return_value = 1
+        mock_validate.return_value = mock_progress
+
+        stream_sink.write(env)
+
+    assert any(call.args[0] == "_logical_date" for call in df.withColumn.call_args_list)
+
+
 def test_stream_sink_raises_when_query_exception(stream_sink: DatabricksStreamingSink):
     query = MagicMock()
     query.exception.return_value = RuntimeError("boom")

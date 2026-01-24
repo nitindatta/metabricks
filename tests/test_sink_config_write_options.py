@@ -86,6 +86,17 @@ class TestDatabricksSinkConfigDefaults:
         )
         assert config.replace_where == "year='2025' AND month='01'"
 
+    def test_default_table_properties(self):
+        config = DatabricksSinkConfig(
+            location_type="catalog_table",
+            object_name="facts",
+            connection=DatabricksConnectionConfig(
+                catalog="main",
+                schema_name="warehouse"
+            ),
+        )
+        assert config.table_properties["delta.columnMapping.mode"] == "name"
+
 
 class TestDatabricksSinkRuntimeConfigBatchMode:
     """Test runtime config smart factory for batch mode."""
@@ -121,6 +132,10 @@ class TestDatabricksSinkRuntimeConfigBatchMode:
         # Explicit options should be preserved, not overridden by write_mode
         assert runtime_config.delta_write_options.mode == "append"
         assert runtime_config.delta_write_options.merge_schema is True
+
+    def test_batch_runtime_config_default_table_properties(self):
+        runtime_config = DatabricksSinkRuntimeConfig(mode="batch")
+        assert runtime_config.table_properties["delta.columnMapping.mode"] == "name"
 
 
 class TestDatabricksSinkRuntimeConfigStreamingMode:

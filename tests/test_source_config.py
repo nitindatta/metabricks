@@ -91,14 +91,17 @@ def test_source_config_discriminates_databricks():
             "system_type": "databricks",
             "extraction_mode": "batch",
             "connection": {"system_type": "databricks"},
-            "source_query": "SELECT 1 WHERE ds = :logical_date",
-            "query_args": {"logical_date": "2025-01-01"},
+            "batch": {
+                "kind": "query",
+                "query": "SELECT 1 WHERE ds = :logical_date",
+                "args": {"logical_date": "2025-01-01"},
+            },
         }
     )
 
     assert cfg.system_type == "databricks"
     assert cfg.extraction_mode == "batch"
-    assert cfg.format == "delta"
+    assert cfg.batch is not None
 
 
 def test_databricks_batch_accepts_logical_date_via_query_args():
@@ -108,8 +111,11 @@ def test_databricks_batch_accepts_logical_date_via_query_args():
             "system_type": "databricks",
             "extraction_mode": "batch",
             "connection": {"system_type": "databricks"},
-            "source_query": "SELECT 1 WHERE ds = :logical_date AND country = :country",
-            "query_args": {"logical_date": "2025-01-01", "country": "FR"},
+            "batch": {
+                "kind": "query",
+                "query": "SELECT 1 WHERE ds = :logical_date AND country = :country",
+                "args": {"logical_date": "2025-01-01", "country": "FR"},
+            },
         }
     )
 
@@ -117,7 +123,7 @@ def test_databricks_batch_accepts_logical_date_via_query_args():
     assert cfg.extraction_mode == "batch"
 
 
-def test_databricks_batch_rejects_non_delta_format():
+def test_databricks_batch_rejects_unknown_format():
     adapter = TypeAdapter(SourceConfig)
 
     with pytest.raises(ValidationError) as exc:
@@ -125,14 +131,16 @@ def test_databricks_batch_rejects_non_delta_format():
             {
                 "system_type": "databricks",
                 "extraction_mode": "batch",
-                "format": "json",
                 "connection": {"system_type": "databricks"},
-                "source_query": "SELECT 1 WHERE ds = :logical_date",
-                "query_args": {"logical_date": "2025-01-01"},
+                "batch": {
+                    "kind": "path",
+                    "path": "/Volumes/cat/schema/vol/folder",
+                    "format": "txt",
+                },
             }
         )
 
-    assert "format='delta'" in str(exc.value)
+    assert "format" in str(exc.value)
 
 
 def test_databricks_streaming_requires_path_and_schema_location():
@@ -143,13 +151,13 @@ def test_databricks_streaming_requires_path_and_schema_location():
             {
                 "system_type": "databricks",
                 "extraction_mode": "streaming",
-                "format": "json",
                 "connection": {"system_type": "databricks"},
+                "streaming": {"kind": "autoloader"},
             }
         )
 
     s = str(exc.value)
-    assert "source_path" in s or "schema_location" in s
+    assert "path" in s or "schema_location" in s
 
 
 def test_databricks_streaming_accepts_json_autoloader_shape():
@@ -159,14 +167,17 @@ def test_databricks_streaming_accepts_json_autoloader_shape():
         {
             "system_type": "databricks",
             "extraction_mode": "streaming",
-            "format": "json",
             "connection": {"system_type": "databricks"},
-            "source_path": "/Volumes/cat/schema/vol/folder",
-            "schema_location": "/Volumes/cat/schema/vol/_schemas/foo",
-            "autoloader_options": {"cloudFiles.inferColumnTypes": "true"},
+            "streaming": {
+                "kind": "autoloader",
+                "path": "/Volumes/cat/schema/vol/folder",
+                "schema_location": "/Volumes/cat/schema/vol/_schemas/foo",
+                "format": "json",
+                "options": {"cloudFiles.inferColumnTypes": "true"},
+            },
         }
     )
 
     assert cfg.system_type == "databricks"
     assert cfg.extraction_mode == "streaming"
-    assert cfg.format == "json"
+    assert cfg.streaming is not None

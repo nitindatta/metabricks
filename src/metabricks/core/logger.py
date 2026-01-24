@@ -67,7 +67,7 @@ def configure_root_logger(level: str = "INFO") -> None:
     metabricks_logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
 
-def get_logger(name: str = "metabricks", level: str = "INFO") -> logging.Logger:
+def get_logger(name: str = "oecd_ingestion_framework", level: str = "INFO") -> logging.Logger:
     """
     Get a module-specific logger configured for notebook-friendly stdout and invocation context.
     """

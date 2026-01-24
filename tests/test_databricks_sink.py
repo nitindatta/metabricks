@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql.types import StringType, StructField, StructType
 
 from metabricks.core.contracts import DataEnvelope, ExecutionContext
 from metabricks.sinks.types import DatabricksSinkRuntimeConfig
@@ -228,3 +229,136 @@ def test_attach_meta_struct_skip_when_hint_disabled(databricks_sink: DatabricksS
     assert result["kind"] == "delta"
     assert result["status"] == "success"
     writer.saveAsTable.assert_called_once()
+
+
+def test_attach_meta_struct_adds_logical_date_column(databricks_sink: DatabricksSink):
+    df = MagicMock(spec=DataFrame)
+    df.withColumn.return_value = df
+
+    context = ExecutionContext(
+        run_id="inv-789-ghi",
+        pipeline_name="test_pipeline",
+        attach_audit_meta=True,
+        logical_date="2025-01-01",
+    )
+
+    class _DummyCol:
+        def cast(self, _typ):
+            return self
+
+        def alias(self, _name):
+            return self
+
+    class _DummyF:
+        def lit(self, _val):
+            return _DummyCol()
+
+        def current_timestamp(self):
+            return _DummyCol()
+
+        def coalesce(self, *_args):
+            return _DummyCol()
+
+        def expr(self, _expr):
+            return _DummyCol()
+
+        def sha2(self, *_args):
+            return _DummyCol()
+
+        def concat_ws(self, *_args):
+            return _DummyCol()
+
+        def col(self, _name):
+            return _DummyCol()
+
+        def struct(self, *_args):
+            return _DummyCol()
+
+    with patch("metabricks.sinks.databricks.batch.F", new=_DummyF()):
+        databricks_sink._attach_meta_struct(df, context)
+
+    assert any(call.args[0] == "_logical_date" for call in df.withColumn.call_args_list)
+
+
+def test_normalize_columns_allows_partition_by_logical_date_added_at_sink(databricks_sink: DatabricksSink):
+    df, writer = _df_and_writer(count_val=1)
+    env = DataEnvelope(payload_type="dataframe", data=df, schema=None, context=None)
+
+    databricks_sink.config.normalize_columns = True
+    databricks_sink.config.partition_by = ["_logical_date"]
+
+    context = ExecutionContext(
+        run_id="inv-ld-partition",
+        pipeline_name="test_pipeline",
+        attach_audit_meta=True,
+        logical_date="2025-01-01",
+    )
+    env.context = context
+
+    with patch.object(databricks_sink, "_attach_meta_struct", return_value=df) as mock_attach, \
+         patch("metabricks.sinks.strategies.delta_writer._try_delta_operation_metrics", return_value=None):
+        result = databricks_sink.write(env)
+
+    mock_attach.assert_called_once()
+    assert result["status"] == "success"
+
+
+def test_column_mapping_present_when_normalization_disabled(databricks_sink: DatabricksSink):
+    df, writer = _df_and_writer(count_val=1)
+    context = ExecutionContext(run_id="inv-no-map", pipeline_name="test", attach_audit_meta=False)
+    env = DataEnvelope(payload_type="dataframe", data=df, schema=None, context=context)
+
+    with patch("metabricks.sinks.strategies.delta_writer._try_delta_operation_metrics", return_value=None):
+        databricks_sink.write(env)
+
+    assert context.metadata["column_mapping"] == {col: col for col in df.columns}
+
+
+def test_table_properties_applied_when_table_missing(mock_spark: object):
+    cfg = DatabricksSinkRuntimeConfig(
+        system_type="databricks",
+        mode="batch",
+        format="delta",
+        connection=DatabricksConnection(catalog="default_catalog", schema_name="default_schema"),
+        target=DatabricksCatalogTableTarget(object_name="test_table"),
+        write_mode="overwrite",
+        table_properties={"delta.autoOptimize.optimizeWrite": "true"},
+    )
+    sink = DatabricksSink(cfg, spark=mock_spark)
+
+    df, writer = _df_and_writer(count_val=1)
+    df.schema = StructType([StructField("id", StringType(), True)])
+    env = DataEnvelope(payload_type="dataframe", data=df, schema=None, context=None)
+
+    mock_spark.catalog.tableExists.return_value = False
+
+    with patch("metabricks.sinks.strategies.delta_writer._try_delta_operation_metrics", return_value=None):
+        sink.write(env)
+
+    sql_arg = mock_spark.sql.call_args.args[0]
+    assert "CREATE TABLE IF NOT EXISTS" in sql_arg
+    assert "TBLPROPERTIES" in sql_arg
+
+
+def test_table_properties_not_applied_when_table_exists(mock_spark: object):
+    cfg = DatabricksSinkRuntimeConfig(
+        system_type="databricks",
+        mode="batch",
+        format="delta",
+        connection=DatabricksConnection(catalog="default_catalog", schema_name="default_schema"),
+        target=DatabricksCatalogTableTarget(object_name="test_table"),
+        write_mode="overwrite",
+        table_properties={"delta.autoOptimize.optimizeWrite": "true"},
+    )
+    sink = DatabricksSink(cfg, spark=mock_spark)
+
+    df, writer = _df_and_writer(count_val=1)
+    df.schema = StructType([StructField("id", StringType(), True)])
+    env = DataEnvelope(payload_type="dataframe", data=df, schema=None, context=None)
+
+    mock_spark.catalog.tableExists.return_value = True
+
+    with patch("metabricks.sinks.strategies.delta_writer._try_delta_operation_metrics", return_value=None):
+        sink.write(env)
+
+    mock_spark.sql.assert_not_called()

@@ -56,8 +56,11 @@ def test_orchestrator_runs_databricks_batch(monkeypatch):
             "system_type": "databricks",
             "extraction_mode": "batch",
             "connection": {"system_type": "databricks"},
-            "source_query": "SELECT * FROM t WHERE ds = :logical_date",
-            "query_args": {"logical_date": "2025-01-01"},
+            "batch": {
+                "kind": "query",
+                "query": "SELECT * FROM t WHERE ds = :logical_date",
+                "args": {"logical_date": "2025-01-01"},
+            },
         },
         sink=None,
     )
@@ -86,8 +89,11 @@ def test_orchestrator_databricks_batch_raises_on_empty_snapshot(monkeypatch):
             "system_type": "databricks",
             "extraction_mode": "batch",
             "connection": {"system_type": "databricks"},
-            "source_query": "SELECT 1",
-            "query_args": {"logical_date": "2025-01-01"},
+            "batch": {
+                "kind": "query",
+                "query": "SELECT 1",
+                "args": {"logical_date": "2025-01-01"},
+            },
         },
         sink=None,
     )

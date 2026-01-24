@@ -64,6 +64,12 @@ class DatabricksSinkConfig(BaseModel):
     delta_write_options: Optional[DeltaBatchWriteOptions] = None
     
     format_options: Dict[str, str] = Field(default_factory=dict)
+    table_properties: Dict[str, str] = Field(
+        default_factory=lambda: {"delta.columnMapping.mode": "name"}
+    )
+    normalize_columns: bool = False
+    normalization_strategy: Literal["spark_safe", "lower_snake"] = "spark_safe"
+    normalization_mapping_key: str = "column_mapping"
 
     @model_validator(mode="after")
     def _validate_and_setup_write_options(self) -> "DatabricksSinkConfig":

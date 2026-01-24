@@ -7,16 +7,19 @@
   "source": {
     "system_type": "databricks",
     "extraction_mode": "streaming",
-    "format": "json",
     "connection": {
       "system_type": "databricks",
       "catalog": "main",
       "schema_name": "raw"
     },
-    "source_path": "/Volumes/main/raw/source_volume/landing/events",
-    "schema_location": "/Volumes/main/raw/source_volume/_schemas/events",
-    "autoloader_options": {
-      "cloudFiles.inferColumnTypes": "true"
+    "streaming": {
+      "kind": "autoloader",
+      "path": "/Volumes/main/raw/source_volume/landing/events",
+      "schema_location": "/Volumes/main/raw/source_volume/_schemas/events",
+      "format": "json",
+      "options": {
+        "cloudFiles.inferColumnTypes": "true"
+      }
     }
   },
   "sink": {

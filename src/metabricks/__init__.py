@@ -1,6 +1,5 @@
-"""metabricks.
-
-MetaBricks - Metadata Ingestion Framework for Databricks.
+"""
+MetaBricks - OECD Metadata Ingestion Framework for Databricks
 
 Production-ready framework for ingesting and transforming metadata from various
 sources (REST APIs, Kafka, JDBC, FTP, ADLS) into Databricks (Unity Catalog, Volumes, Streaming).

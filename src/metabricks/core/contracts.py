@@ -19,9 +19,43 @@ class ExecutionContext:
     is_replay: bool = False                     # Backfill/reprocess flag
     batch_id: Optional[str] = None              # Batch sequence identifier
     pipeline_version: Optional[str] = None      # Code version (git SHA or semver)
+    logical_date: Optional[str] = None          # Scheduler logical date / data interval boundary
     record_hash_keys: Optional[List[str]] = None  # Dedup keys for _meta.record_hash
     attach_audit_meta: bool = False             # Enable _meta struct in sinks
     metadata: Dict[str, Any] = field(default_factory=dict)  # Extensibility hook
+
+    @classmethod
+    def from_runtime_vars(
+        cls,
+        *,
+        run_id: str,
+        pipeline_name: str,
+        environment: Optional[str],
+        source_system: Optional[str],
+        source_dataset_id: Optional[str],
+        attach_audit_meta: bool,
+        record_hash_keys: Optional[List[str]],
+        is_replay: bool,
+        batch_id: Optional[str],
+        pipeline_version: Optional[str],
+        runtime_vars: Optional[Dict[str, Any]] = None,
+    ) -> "ExecutionContext":
+        metadata = dict(runtime_vars or {})
+        logical_date = metadata.pop("logical_date", None)
+        return cls(
+            run_id=run_id,
+            pipeline_name=pipeline_name,
+            environment=environment,
+            source_system=source_system,
+            source_dataset_id=source_dataset_id,
+            attach_audit_meta=attach_audit_meta,
+            record_hash_keys=record_hash_keys,
+            is_replay=is_replay,
+            batch_id=batch_id,
+            pipeline_version=pipeline_version,
+            logical_date=logical_date,
+            metadata=metadata,
+        )
 
     @property
     def invocation_id(self) -> str:

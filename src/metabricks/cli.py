@@ -191,7 +191,7 @@ def cli() -> None:
     """
     parser = argparse.ArgumentParser(
         prog="metabricks",
-        description="MetaBricks - Metadata Ingestion Framework for Databricks"
+        description="OECD Metadata Ingestion Framework for Databricks"
     )
 
     subparsers = parser.add_subparsers(

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from metabricks.connectors.databricks.batch import DatabricksBatchConnector
-from metabricks.connectors.databricks.types import DatabricksConnection, DatabricksQuery
+from metabricks.connectors.databricks.types import DatabricksBatchQuerySource, DatabricksConnection
 
 
 class FakeDF:
@@ -35,9 +35,10 @@ def test_databricks_batch_connector_extract_success():
 
     connector = DatabricksBatchConnector(
         DatabricksConnection(),
-        DatabricksQuery(
-            source_query="SELECT * WHERE ds = :logical_date",
-            query_args={"logical_date": "2025-01-01"},
+        DatabricksBatchQuerySource(
+            kind="query",
+            query="SELECT * WHERE ds = :logical_date",
+            args={"logical_date": "2025-01-01"},
         ),
         spark=spark,
     )
@@ -56,9 +57,10 @@ def test_databricks_batch_connector_raises_when_no_snapshot():
 
     connector = DatabricksBatchConnector(
         DatabricksConnection(),
-        DatabricksQuery(
-            source_query="SELECT 1",
-            query_args={"logical_date": "2025-01-01"},
+        DatabricksBatchQuerySource(
+            kind="query",
+            query="SELECT 1",
+            args={"logical_date": "2025-01-01"},
         ),
         spark=spark,
     )
@@ -75,9 +77,10 @@ def test_databricks_batch_connector_supports_multiple_named_parameters():
 
     connector = DatabricksBatchConnector(
         DatabricksConnection(),
-        DatabricksQuery(
-            source_query="SELECT * FROM t WHERE ds = :logical_date AND country = :country",
-            query_args={"logical_date": "2025-01-01", "country": "FR"},
+        DatabricksBatchQuerySource(
+            kind="query",
+            query="SELECT * FROM t WHERE ds = :logical_date AND country = :country",
+            args={"logical_date": "2025-01-01", "country": "FR"},
         ),
         spark=spark,
     )
