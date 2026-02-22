@@ -186,7 +186,7 @@ print(result["status"])
   }
 }
 ```
-
+```code
 @register_connector(system_type="jdbc", extraction_mode="batch")
 class JdbcConnector(BaseConnector):
     def extract(self):
@@ -195,6 +195,7 @@ class JdbcConnector(BaseConnector):
 class DatabricksSink(BaseSink):
     def write(self, env):
         ...
+```
 Who Is This For?
 
 Data engineers building enterprise Databricks platforms
