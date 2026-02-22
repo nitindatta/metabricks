@@ -1,0 +1,38 @@
+{
+  "_comment": "Kafka streaming -> Delta table. Trigger/output mode are controlled by runtime DeltaStreamWriteOptions; pipeline JSON currently supplies checkpoint_path and uses defaults.",
+  "pipeline_name": "streaming_kafka_to_delta",
+  "environment": "dev",
+  "source_system": "kafka",
+
+  "source": {
+    "system_type": "kafka",
+    "extraction_mode": "streaming",
+    "format": "json",
+    "connection": {
+      "system_type": "kafka",
+      "bootstrap_servers": "kafka.example.com:9092"
+    },
+    "topic": "events",
+    "starting_offsets": "latest"
+  },
+
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "streaming",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "real_time"
+    },
+    "object_name": "events",
+    "write_mode": "append",
+    "checkpoint_path": "/mnt/checkpoints/kafka_stream"
+  },
+
+  "notes": [
+    "checkpoint_path is required for streaming sinks",
+    "Defaults: output_mode=append, trigger=availableNow"
+  ]
+}

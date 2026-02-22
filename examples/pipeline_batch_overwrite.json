@@ -1,0 +1,42 @@
+{
+  "_comment": "Basic batch overwrite to a Unity Catalog table. This example uses the forward-only PipelineConfig format (single source + single sink).",
+  "pipeline_name": "batch_overwrite_example",
+  "environment": "dev",
+  "source_system": "external_api",
+
+  "source": {
+    "system_type": "api",
+    "extraction_mode": "batch",
+    "format": "json",
+    "connection": {
+      "system_type": "api",
+      "base_url": "https://api.example.com",
+      "auth": {"kind": "none"}
+    },
+    "endpoint": "/v1/customers",
+    "method": "GET"
+  },
+
+  "sink": {
+    "system_type": "databricks",
+    "location_type": "catalog_table",
+    "mode": "batch",
+    "format": "delta",
+    "connection": {
+      "system_type": "databricks",
+      "catalog": "main",
+      "schema_name": "silver"
+    },
+    "object_name": "customers",
+    "write_mode": "overwrite",
+    "delta_write_options": {
+      "mode": "overwrite",
+      "merge_schema": false
+    }
+  },
+
+  "notes": [
+    "Full refresh pattern: overwrite the whole table",
+    "Set merge_schema=false for strict schemas"
+  ]
+}

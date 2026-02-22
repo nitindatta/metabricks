@@ -1,0 +1,29 @@
+{
+  "_comment": "Minimal pipeline config without audit metadata - execution_context is optional",
+  
+  "pipeline_name": "simple_api_to_volume",
+  "environment": "dev",
+  "source_system": "external_api",
+  
+  "source": {
+    "system_type": "api",
+    "extraction_mode": "batch",
+    "format": "json",
+    "connection": {
+      "system_type": "api",
+      "base_url": "https://api.example.com",
+      "auth": {"kind": "none"}
+    },
+    "endpoint": "/v1/data",
+    "method": "GET"
+  },
+  
+  "sink": {
+    "system_type": "filesystem",
+    "mode": "batch",
+    "format": "json",
+    "root": "/tmp/data",
+    "folder_path": "landing",
+    "object_name": "data.json"
+  }
+}
